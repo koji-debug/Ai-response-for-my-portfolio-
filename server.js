@@ -1,43 +1,32 @@
 import express from "express";
 import cors from "cors";
+import OpenAI from "openai";
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const API_KEY = "YOUR_OPENAI_API_KEY"; // 🔴 PUT YOUR KEY HERE
+// Use environment variable for OpenAI key
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
 
 app.post("/chat", async (req, res) => {
-  const userMessage = req.body.message;
+  const { message } = req.body;
+  if (!message) return res.status(400).json({ error: "No message provided" });
 
   try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${API_KEY}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: "You are a professional AI assistant representing a developer portfolio. Be helpful, smart, and persuasive."
-          },
-          {
-            role: "user",
-            content: userMessage
-          }
-        ]
-      })
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [{ role: "user", content: message }]
     });
 
-    const data = await response.json();
-    res.json({ reply: data.choices[0].message.content });
-
+    res.json({ reply: response.choices[0].message.content });
   } catch (err) {
-    res.status(500).json({ reply: "Error connecting to AI." });
+    console.error(err);
+    res.status(500).json({ error: "AI request failed" });
   }
 });
 
-app.listen(3000, () => console.log("Server running on port 3000"));
+const port = process.env.PORT || 3000;
+app.listen(port, () => console.log(`Server running on port ${port}`));
